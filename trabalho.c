@@ -54,18 +54,18 @@
 #define TOTAL_BLOCOS 30000
 
 // Estrutura do Bloco Não Minerado
-typedef struct BlocoNaoMinerado {
+typedef struct BlocoNaoMinerado{
     unsigned int numero;    // Número sequencial do bloco
     unsigned int nonce;     // Varia de 0 a 2^32 - 1
     unsigned char data[DATA_SIZE_BYTES]; // Dados das transações + endereço do minerador
     unsigned char hashAnterior[SHA256_DIGEST_LENGTH];   // Hash do bloco anterior
-} BlocoNaoMinerado;
+}BlocoNaoMinerado;
 
 // Estrutura do Bloco Minerado
-typedef struct BlocoMinerado {
+typedef struct BlocoMinerado{
     BlocoNaoMinerado bloco;
     unsigned char hash[SHA256_DIGEST_LENGTH]; // O hash válido que começa com zeros
-} BlocoMinerado;
+}BlocoMinerado;
 
 // Carteira do Sistema: saldo dos 256 endereços
 // Fora da main por conveniência.
@@ -76,16 +76,16 @@ unsigned int carteira[CARTEIRA_SIZE];
 // ============================================================================
 
 // Função para imprimir o hash em hexadecimal (para visualização)
-void printHash(unsigned char hash[]) {
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+void printHash(unsigned char hash[]){
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++){
         printf("%02x", hash[i]);
     }
     printf("\n");
 }
 
 // Inicializa a carteira com zeros
-void inicializarCarteira() {
-    for (int i = 0; i < 256; i++) {
+void inicializarCarteira(){
+    for(int i = 0; i < 256; i++){
         carteira[i] = 0;
     }
 }
@@ -94,7 +94,7 @@ void inicializarCarteira() {
 // 3. Lógica do Bloco Gênesis
 // ============================================================================
 
-int main() {
+int main(){
     // Inicialização da semente do gerador aleatório conforme exigido
     MTRand r = seedRand(1234567);
 
@@ -136,18 +136,18 @@ int main() {
 
     printf("Iniciando mineracao do Bloco Genesis...\n");
 
-    while (!minerado) {
+    while(!minerado){
         // Calcula o SHA-256 do bloco não minerado inteiro
         SHA256((unsigned char*)&blocoGenesis.bloco, sizeof(BlocoNaoMinerado), blocoGenesis.hash);
 
         // Verifica a condição de validade: Hash deve começar com dois zeros hexadecimais 
         // Dois zeros hexadecimais (00) equivalem ao primeiro byte ser 0 
-        if (blocoGenesis.hash[0] == 0) {
+        if(blocoGenesis.hash[0] == 0)
             minerado = 1;
-        } else {
+
+        else
             // Se não validou, incrementa o nonce e tenta de novo
             blocoGenesis.bloco.nonce++;
-        }
     }
 
     // --- Atualização da Carteira ---
@@ -156,9 +156,9 @@ int main() {
     carteira[enderecoMinerador] += RECOMPENSA_MINERACAO;
 
     // --- Exibição dos Resultados ---
-    printf("\n--- Bloco Genesis Minerado com Sucesso ---\n");
-    printf("Nonce encontrado: %u\n", blocoGenesis.bloco.nonce);
-    printf("Hash do Bloco: ");
+    printf("\nBloco Genesis Minerado com Sucesso\n");
+    printf("Nonce = %u\n", blocoGenesis.bloco.nonce);
+    printf("Hash = ");
     printHash(blocoGenesis.hash);
     printf("Saldo da Carteira [%d]: %d BTC\n", enderecoMinerador, carteira[enderecoMinerador]);
 
@@ -169,7 +169,7 @@ int main() {
     BlocoMinerado blocoAnterior = blocoGenesis;
     BlocoMinerado blocoAtual;
 
-    for (int i = 2; i <= TOTAL_BLOCOS; ++i) {
+    for(int i = 2; i <= TOTAL_BLOCOS; ++i){
         blocoAtual.bloco.numero = i;
         blocoAtual.bloco.nonce = 0;
 
@@ -182,34 +182,36 @@ int main() {
 
         int pos = 0; // índice no vetor data
 
-        for (int t = 0; t < transacoes; t++) {
-            int origem;
+        for(int t = 0; t < transacoes; t++){
+            int carteiraOrigem;
             int tentativas = 0;
             // 1000 tentativas de achar endereço com saldo
             do{
-                origem = genRandLong(&r) % 256;
+                carteiraOrigem = genRandLong(&r) % 256;
                 tentativas++;
-                if(tentativas > 1000) break; // nenhum endereco com saldo 
-            }while(carteira[origem] == 0);
+                if(tentativas > 1000)
+                    break; // nenhum endereco com saldo 
+            }while(carteira[carteiraOrigem] == 0);
 
-            if(carteira[origem] == 0) break;
+            if(carteira[carteiraOrigem] == 0)
+                break;
 
-            int destino = genRandLong(&r) % 256;
-            int maxBTC = carteira[origem];
+            int carteiraDestino = genRandLong(&r) % 256;
+            int maxBTC = carteira[carteiraOrigem];
             // qnt recebe 0 se o end de origem possuir 0 bitcoins (não há o que enviar)
             // senão, gera uma quantidade aleatória de bitcoins a ser enviada do saldo
             // maxBTC + 1 pois há a possibilidade de enviar tudo o que tem no saldo
-            int qnt = (maxBTC == 0 ? 0 : (genRandLong(&r) % (maxBTC + 1)));
+            int bitcoinsTransacao = (maxBTC == 0 ? 0 : (genRandLong(&r) % (maxBTC + 1)));
 
-            // transação tirando da origem e levando ao destino
-            carteira[origem] -= qnt;
-            carteira[destino] += qnt;
+            // transação tirando da origem e colocando ao destino
+            carteira[carteiraOrigem] -= bitcoinsTransacao;
+            carteira[carteiraDestino] += bitcoinsTransacao;
 
             // insere no bloco (ex: 10 20 30 - origem 10, destino 20, qtd de bitcoins 30)
             // ou seja, preenchimento do vetor data com as transações
-            blocoAtual.bloco.data[pos++] = (unsigned char) origem;
-            blocoAtual.bloco.data[pos++] = (unsigned char) destino;
-            blocoAtual.bloco.data[pos++] = (unsigned char) qnt;
+            blocoAtual.bloco.data[pos++] = (unsigned char) carteiraOrigem;
+            blocoAtual.bloco.data[pos++] = (unsigned char) carteiraDestino;
+            blocoAtual.bloco.data[pos++] = (unsigned char) bitcoinsTransacao;
 
             // pare de minerar o bloco quando o vetor data for totalmente preenchido ate a posição 182 (183 é para o minerador)
             if (pos >= DATA_SIZE_BYTES - 1) 
@@ -238,7 +240,7 @@ int main() {
         blocoAnterior = blocoAtual;
 
         // exibição dos blocos 1000, 2000, ...
-        if (i % 1000 == 0) {
+        if(i % 1000 == 0){
             printf("Bloco %d minerado. Nonce = %u Hash = ", i, blocoAtual.bloco.nonce);
             printHash(blocoAtual.hash);
         }
